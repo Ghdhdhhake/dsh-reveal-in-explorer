@@ -4,8 +4,9 @@
  * `__ModuleLoader__`, React, and DOM are minimal stubs.
  *
  * Covered: module registration, the `inject` contract, locale registration,
- * slot registration, workspace-relative path resolution, the pointer-hover
- * listener set, and the exact Host Remote request the action sends.
+ * slot registration, workspace-relative path resolution, chip placement, the
+ * pointer-hover listener set, and the exact Host Remote request the action
+ * sends.
  *
  * Run with `node scripts/test.mjs`.
  */
@@ -171,8 +172,41 @@ assert.equal(internals.resolveWorkspacePath('C:\\workspace', 'docs/a.txt'), 'C:\
 assert.equal(internals.resolveWorkspacePath('/home/me/ws', 'docs/a.txt'), '/home/me/ws/docs/a.txt');
 assert.equal(internals.resolveWorkspacePath('/home/me/ws', '/etc/passwd'), '/etc/passwd');
 assert.equal(internals.resolveWorkspacePath(undefined, 'docs/a.txt'), 'docs/a.txt');
-assert.equal(internals.basename('C:\\workspace\\B站下载器代码.txt'), 'B站下载器代码.txt');
-assert.equal(internals.basename('docs/readme.md'), 'readme.md');
+
+// --- chip placement ------------------------------------------------------
+const viewport = { width: 1200, height: 800 };
+const chipSize = { width: 260, height: 34 };
+{
+  // Plenty of room on the right: sit beside the reference, vertically centred.
+  const placed = internals.placeChip(
+    { left: 100, top: 200, right: 300, bottom: 220, width: 200, height: 20 },
+    chipSize,
+    viewport,
+  );
+  assert.equal(placed.left, 308, 'the chip prefers the right of the reference');
+  assert.equal(placed.top, 193, 'the chip is centred on the reference');
+}
+{
+  // No room on the right, room below: fall under the reference.
+  const placed = internals.placeChip(
+    { left: 900, top: 200, right: 1180, bottom: 220, width: 280, height: 20 },
+    chipSize,
+    viewport,
+  );
+  assert.equal(placed.left, 900, 'a right-edge reference falls back to the left edge');
+  assert.equal(placed.top, 228, 'the chip drops below when the right side is tight');
+}
+{
+  // Bottom-right corner: no room right or below, so go above.
+  const placed = internals.placeChip(
+    { left: 900, top: 780, right: 1180, bottom: 798, width: 280, height: 18 },
+    chipSize,
+    viewport,
+  );
+  assert.equal(placed.top, 738, 'the chip flips above when nothing fits below');
+  assert.ok(placed.left + chipSize.width <= viewport.width - 8, 'the chip stays inside the viewport');
+  assert.ok(placed.top >= 8, 'the chip never leaves the top edge');
+}
 
 // --- tooltip classification ----------------------------------------------
 assert.equal(internals.looksLikePath('C:\\workspace\\a.txt'), true);

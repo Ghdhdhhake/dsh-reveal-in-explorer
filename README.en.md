@@ -10,7 +10,7 @@ Clicking a file reference keeps the native behaviour (open it in the right Sideb
 
 ## Features
 
-- **Hover to reveal** — after a 160 ms dwell the overlay shows “📂 Reveal in File Explorer” beneath the reference.
+- **Hover to reveal** — after a 160 ms dwell the overlay shows “📂 Reveal in File Explorer” to the **right** of the reference, falling back to below, then above, and always clamped inside the viewport.
 - **Native click untouched** — the plugin never intercepts the existing preview action.
 - **Platform-aware** — the Host's `open-in-app` / `native-command` decides the target: `explorer.exe /select,` on Windows, `open -R` on macOS, the parent directory on Linux.
 - **Workspace-relative paths** — `docs/a.md` is resolved against the active Session's `cwd`.
