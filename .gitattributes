@@ -1,0 +1,6 @@
+# Normalize text files so the repository is byte-identical on every platform.
+* text=auto eol=lf
+*.svg text eol=lf
+*.png binary
+*.jpg binary
+*.webp binary
