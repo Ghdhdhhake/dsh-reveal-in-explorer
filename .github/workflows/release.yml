@@ -1,0 +1,65 @@
+name: Release
+
+# Publishes the GitHub Release for a pushed version tag. Using the workflow's
+# own GITHUB_TOKEN keeps release creation inside the repository's permissions,
+# so no personal access token or local API access is needed.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to publish a release for (e.g. v0.1.0)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # A release is only worth publishing if the tagged tree actually builds
+      # and passes its own checks, so re-verify before creating it.
+      - name: Verify the tagged tree
+        run: |
+          node scripts/build.mjs
+          node scripts/check.mjs
+          node --test test/behaviour.test.mjs test/paths.test.mjs test/selectors.test.mjs test/render.test.mjs
+          if [ -n "$(git status --porcelain -- lib)" ]; then
+            echo "::error::lib/ is stale in the tagged commit."
+            exit 1
+          fi
+
+      - name: Resolve the release tag
+        id: tag
+        run: echo "name=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.name }}
+        run: |
+          notes="docs/release-notes-${TAG}.md"
+          if [ -f "$notes" ]; then
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes-file "$notes" \
+              --verify-tag
+          else
+            echo "::warning::no $notes; falling back to generated notes"
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --generate-notes \
+              --verify-tag
+          fi
