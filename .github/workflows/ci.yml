@@ -50,4 +50,11 @@ jobs:
         run: node scripts/check.mjs
 
       - name: Unit tests
-        run: node --test test/*.test.mjs
+        # The file list is explicit rather than a glob: Node 20 does not expand
+        # globs in `--test`, and cmd.exe (npm on Windows) does not either.
+        run: >-
+          node --test
+          test/behaviour.test.mjs
+          test/paths.test.mjs
+          test/selectors.test.mjs
+          test/render.test.mjs

@@ -121,6 +121,18 @@ for (const selector of ['data-chat-flow', 'data-ref-chip', 'data-presented-file'
   expect(clientBundle.includes(selector), `lib/client.js: selector contract lost "${selector}"`);
 }
 
+// `npm test` and CI list test files explicitly (Node 20 cannot expand globs),
+// so a new test file that is not listed would never run. Catch that here.
+const declaredTests = new Set(
+  (manifest.scripts?.test ?? '')
+    .split(/\s+/)
+    .filter((token) => token.endsWith('.test.mjs')),
+);
+for (const name of readdirSync(join(root, 'test'))) {
+  if (!name.endsWith('.test.mjs')) continue;
+  expect(declaredTests.has(`test/${name}`), `package.json "test" script does not run test/${name}`);
+}
+
 const icon = readFileSync(join(root, 'icon.svg'), 'utf8');
 expect(icon.trimStart().startsWith('<svg'), 'icon.svg: must be an SVG document');
 expect(statSync(join(root, 'icon.svg')).size <= 256 * 1024, 'icon.svg: must stay under 256 KiB');

@@ -106,7 +106,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "check": "node scripts/check.mjs",
-    "test": "node --test test/*.test.mjs",
-    "verify": "node scripts/build.mjs && node scripts/check.mjs && node --test test/*.test.mjs"
+    "test": "node --test test/behaviour.test.mjs test/paths.test.mjs test/selectors.test.mjs test/render.test.mjs",
+    "verify": "node scripts/build.mjs && node scripts/check.mjs && node --test test/behaviour.test.mjs test/paths.test.mjs test/selectors.test.mjs test/render.test.mjs"
   }
 }

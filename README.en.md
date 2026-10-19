@@ -82,12 +82,14 @@ Disable and remove `dsh-reveal-in-explorer` under **Settings → Plugins**, or d
 ## Development
 
 ```sh
-node scripts/build.mjs      # src/ → lib/index.js and lib/client.js
-node scripts/check.mjs      # manifest, resources, selector contract, shipped files
-node --test test/*.test.mjs # unit tests (Node's built-in runner)
+node scripts/build.mjs   # src/ → lib/index.js and lib/client.js
+node scripts/check.mjs   # manifest, resources, selector contract, shipped files
+npm test                 # unit tests (Node's built-in runner, no dependencies)
 ```
 
 Or run everything with `npm run verify`. All of it is dependency-free and offline. `lib/` is committed, so installing the bundle never runs a build script.
+
+`npm test` lists the four test files explicitly (Node 20 does not expand globs for `--test`, and cmd.exe does not either). `scripts/check.mjs` verifies that every `*.test.mjs` under `test/` is listed, so a new test file that nobody registered fails the build instead of silently never running.
 
 ### Test coverage
 

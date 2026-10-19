@@ -84,10 +84,12 @@ dsh plugin --profile <profile> add /path/to/dsh-reveal-in-explorer
 ```sh
 node scripts/build.mjs      # 由 src/ 生成 lib/index.js 与 lib/client.js
 node scripts/check.mjs      # 清单、资源、选择器契约与发布文件一致性
-node --test test/*.test.mjs # 单元测试（Node 内置 test runner）
+npm test                    # 单元测试（Node 内置 test runner，无依赖）
 ```
 
 或一次跑完：`npm run verify`。全部零依赖、不联网，Windows PowerShell 里可直接运行。`lib/` 是提交进仓库的构建产物，安装时不会执行任何构建脚本。
+
+`npm test` 显式列出四个测试文件（Node 20 不支持 `--test` 的 glob，cmd.exe 也不会展开 `*`），`scripts/check.mjs` 会校验「`test/` 下每个 `*.test.mjs` 都在脚本里」——新增测试文件忘了登记会直接失败，而不是静默不跑。
 
 ### 测试覆盖
 
