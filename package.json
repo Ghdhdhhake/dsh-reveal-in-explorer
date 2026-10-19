@@ -20,6 +20,7 @@
     "src",
     "scripts",
     "docs",
+    "test",
     "cordis.patch.yml",
     "dsh.plugin.json",
     "locale/*.json",
@@ -103,7 +104,9 @@
   },
   "license": "MIT",
   "scripts": {
+    "build": "node scripts/build.mjs",
     "check": "node scripts/check.mjs",
-    "test": "node scripts/test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "verify": "node scripts/build.mjs && node scripts/check.mjs && node --test test/*.test.mjs"
   }
 }

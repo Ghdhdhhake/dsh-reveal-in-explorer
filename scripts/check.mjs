@@ -3,12 +3,13 @@
  *
  * Verifies the manifest contract DSH reads before it imports anything:
  * bundle patch, client platform, exported locale/icon resources, declared
- * files on disk, `engines.dsh` compatibility, and a valid icon payload.
+ * files on disk, `engines.dsh` compatibility, a valid icon payload, and the
+ * selector contract the client depends on.
  *
  * Run with `node scripts/check.mjs`.
  */
-import { existsSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -27,6 +28,37 @@ function expect(condition, message) {
 /** Read and parse one JSON file relative to the package root. */
 function readJson(relative) {
   return JSON.parse(readFileSync(join(root, relative), 'utf8'));
+}
+
+/**
+ * Expand a `files` entry the way npm does: a literal path, a directory, or a
+ * single-`*` glob segment.
+ * @param {string} entry - one `files` pattern.
+ * @returns {string[]} matching package-relative paths.
+ */
+function expandFileEntry(entry) {
+  if (!entry.includes('*')) {
+    const target = join(root, entry);
+    if (!existsSync(target)) return [];
+    if (!statSync(target).isDirectory()) return [entry];
+    const found = [];
+    const walk = (directory) => {
+      for (const name of readdirSync(directory)) {
+        const absolute = join(directory, name);
+        if (statSync(absolute).isDirectory()) walk(absolute);
+        else found.push(relative(root, absolute).split('\\').join('/'));
+      }
+    };
+    walk(target);
+    return found;
+  }
+
+  const directory = join(root, dirname(entry));
+  const pattern = new RegExp(`^${entry.split('/').pop().replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*')}$`);
+  if (!existsSync(directory)) return [];
+  return readdirSync(directory)
+    .filter((name) => pattern.test(name))
+    .map((name) => `${dirname(entry).split('\\').join('/')}/${name}`.replace(/^\.\//, ''));
 }
 
 const manifest = readJson('package.json');
@@ -81,9 +113,38 @@ expect(clientBundle.includes('factory(require)'), 'lib/client.js: factory must a
 const hostEntry = readFileSync(join(root, 'lib/index.js'), 'utf8');
 expect(/export\s+function\s+apply\s*\(/.test(hostEntry), 'lib/index.js: must export apply()');
 
+// The selector contract is the one place a DSH upgrade can break this plugin
+// silently, so the fixture and the selector table must both be present.
+expect(existsSync(join(root, 'test/fixtures/chat-transcript.html')), 'missing file: test/fixtures/chat-transcript.html');
+expect(clientBundle.includes('SELECTORS'), 'lib/client.js: the selector table must be present');
+for (const selector of ['data-chat-flow', 'data-ref-chip', 'data-presented-file', 'fileLink']) {
+  expect(clientBundle.includes(selector), `lib/client.js: selector contract lost "${selector}"`);
+}
+
 const icon = readFileSync(join(root, 'icon.svg'), 'utf8');
 expect(icon.trimStart().startsWith('<svg'), 'icon.svg: must be an SVG document');
 expect(statSync(join(root, 'icon.svg')).size <= 256 * 1024, 'icon.svg: must stay under 256 KiB');
+
+// Everything the manifest promises to ship must exist on disk, and the files
+// DSH reads at install time must be inside that set — otherwise a published
+// tarball is missing a file the Host will ask for.
+const shipped = new Set();
+for (const entry of manifest.files ?? []) {
+  for (const file of expandFileEntry(entry)) shipped.add(file);
+}
+for (const required of [
+  'lib/index.js',
+  'lib/client.js',
+  'cordis.patch.yml',
+  'dsh.plugin.json',
+  'locale/en.json',
+  'locale/zh.json',
+  'icon.svg',
+  'LICENSE',
+  'README.md',
+]) {
+  expect(shipped.has(required), `package.json "files" must ship ${required}`);
+}
 
 if (failures.length > 0) {
   for (const message of failures) console.error(`FAIL ${message}`);
@@ -91,4 +152,5 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(`OK ${manifest.name}@${manifest.version} — manifest, resources, and built artifacts are consistent`);
+console.log(`OK ${manifest.name}@${manifest.version} — manifest, resources, selector contract, and shipped files are consistent`);
+console.log(`   ${shipped.size} files ship from package.json "files"`);

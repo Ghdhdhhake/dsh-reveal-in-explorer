@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: node ${{ matrix.node }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [20, 22, 24]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Report runtime
+        run: node --version && npm --version
+
+      # The bundle has no dependencies, so there is deliberately no install
+      # step: everything below runs offline with the Node standard library.
+      - name: Build from src/
+        run: node scripts/build.mjs
+
+      - name: Verify lib/ is in sync with src/
+        shell: bash
+        run: |
+          if [ -n "$(git status --porcelain -- lib)" ]; then
+            echo "::error::lib/ is stale. Run 'node scripts/build.mjs' and commit the result."
+            git --no-pager diff -- lib
+            exit 1
+          fi
+
+      - name: Manifest and resource checks
+        run: node scripts/check.mjs
+
+      - name: Unit tests
+        run: node --test test/*.test.mjs

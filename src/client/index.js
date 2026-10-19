@@ -28,6 +28,31 @@ const POPUP_WIDTH = 300;
 /** Attribute marking our own floating surface, so hovering it never re-arms a hover. */
 const SURFACE_ATTR = 'data-reveal-in-explorer';
 
+/**
+ * The DOM contract this plugin depends on.
+ *
+ * These selectors are the whole coupling to the Host's chat renderer: if DSH
+ * changes its markup, the matching entry here stops matching. `scripts/test.mjs`
+ * asserts every selector still resolves against `test/fixtures/chat-transcript.html`,
+ * so an upgrade that breaks one fails CI instead of failing silently in the page.
+ */
+const SELECTORS = {
+  /** Resolved inline-code mention: `<code><button title="path">…</button></code>`. */
+  mention: 'code > button[title]',
+  /** Composer / user-message path chip. */
+  chip: '[data-ref-chip="file"][title], [data-ref-chip="folder"][title]',
+  /** Path-shaped Markdown link rendered by the chat's markdown renderer. */
+  fileLink: 'button[title][class*="fileLink"]',
+  /** Delivered-file card; its action button carries the resolved path. */
+  presentedCard: '[data-presented-file]',
+  /** Any titled action inside a delivered-file card. */
+  presentedAction: 'button[title]',
+  /** The transcript column that owns every reference above. */
+  chatFlow: '[data-chat-flow]',
+  /** Last-resort match for other titled controls inside the transcript. */
+  titledFallback: '[data-chat-flow] button[title], [data-chat-flow] a[title]',
+};
+
 /** Runtime dictionaries (the `locale/*.json` files only carry plugin metadata). */
 const zh = {
   'reveal.action': '在资源管理器中显示',
@@ -95,34 +120,34 @@ function looksLikePath(value) {
 function readPathTarget(start) {
   if (!(start instanceof Element)) return null;
 
-  const mention = start.closest('code > button[title]');
+  const mention = start.closest(SELECTORS.mention);
   if (mention !== null) {
     const path = mention.getAttribute('title');
     return path === null || path === '' ? null : { element: mention, path };
   }
 
-  const chip = start.closest('[data-ref-chip="file"][title], [data-ref-chip="folder"][title]');
+  const chip = start.closest(SELECTORS.chip);
   if (chip !== null) {
     const path = chip.getAttribute('title');
     return path === null || path === '' ? null : { element: chip, path };
   }
 
-  const link = start.closest('button[title][class*="fileLink"]');
+  const link = start.closest(SELECTORS.fileLink);
   if (link !== null) {
     const path = link.getAttribute('title');
     return path === null || path === '' ? null : { element: link, path };
   }
 
-  const card = start.closest('[data-presented-file]');
+  const card = start.closest(SELECTORS.presentedCard);
   if (card !== null) {
-    const button = card.querySelector('button[title]');
+    const button = card.querySelector(SELECTORS.presentedAction);
     if (button !== null) {
       const path = button.getAttribute('title');
       if (path !== null && path !== '') return { element: card, path };
     }
   }
 
-  const titled = start.closest('[data-chat-flow] button[title], [data-chat-flow] a[title]');
+  const titled = start.closest(SELECTORS.titledFallback);
   if (titled !== null) {
     const path = titled.getAttribute('title');
     if (path !== null && looksLikePath(path)) return { element: titled, path };
@@ -186,6 +211,24 @@ function placeChip(rect, size, viewport) {
     left: Math.max(margin, Math.min(left, viewport.width - size.width - margin)),
     top: Math.max(margin, Math.min(top, viewport.height - size.height - margin)),
   };
+}
+
+/**
+ * Report one failed hand-off.
+ *
+ * Kept as a module-level function so the test suite can assert the log line
+ * without mounting the overlay: it closes over the sandbox `console`, which is
+ * exactly what a browser session would print.
+ * @param {string} path - the path the user asked to reveal.
+ * @param {string} detail - the Host's reason, or a transport message.
+ * @returns {void}
+ */
+function reportFailure(path, detail) {
+  if (typeof console === 'undefined' || typeof console.warn !== 'function') return;
+  console.warn(
+    `[reveal-in-explorer] reveal failed for ${path}: ${detail}`,
+    { path, error: detail, host: 'remote.session.openWorkspacePath' },
+  );
 }
 
 /**
@@ -278,7 +321,7 @@ function RevealOverlay(props) {
         hideTimer = 0;
         return;
       }
-      if (target.closest('[data-chat-flow], [data-ref-chip], [data-presented-file]') === null) {
+      if (target.closest(`${SELECTORS.chatFlow}, ${SELECTORS.chip}, ${SELECTORS.presentedCard}`) === null) {
         if (anchor !== null) scheduleClose();
         return;
       }
@@ -293,7 +336,7 @@ function RevealOverlay(props) {
     const onFocusIn = (event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
-      if (target.closest('[data-chat-flow]') === null) return;
+      if (target.closest(SELECTORS.chatFlow) === null) return;
       const found = readPathTarget(target);
       if (found !== null) arm(found);
     };
@@ -333,7 +376,7 @@ function RevealOverlay(props) {
 
   const run = async () => {
     if (entry.phase === 'busy' || entry.phase === 'done') return;
-    setEntry((current) => (current === null ? current : { ...current, phase: 'busy' }));
+    setEntry((current) => (current === null ? current : { ...current, phase: 'busy', detail: '' }));
     let outcome;
     try {
       outcome = await reveal(entry.path);
@@ -341,7 +384,7 @@ function RevealOverlay(props) {
       outcome = { ok: false, error: String(error) };
     }
     if (outcome !== undefined && outcome.ok === true) {
-      setEntry((current) => (current === null ? current : { ...current, phase: 'done' }));
+      setEntry((current) => (current === null ? current : { ...current, phase: 'done', detail: '' }));
       window.clearTimeout(doneTimer.current);
       doneTimer.current = window.setTimeout(() => {
         if (typeof closeRef.current === 'function') closeRef.current();
@@ -349,7 +392,15 @@ function RevealOverlay(props) {
       }, DONE_HOLD_MS);
       return;
     }
-    setEntry((current) => (current === null ? current : { ...current, phase: 'error' }));
+
+    // A failed hand-off keeps the popup open with the Host's own reason, so the
+    // user can read it, retry, and paste it into an issue. The console line
+    // carries the same context for anyone collecting logs.
+    const detail = outcome === undefined || outcome.error === undefined || outcome.error === ''
+      ? 'unknown error'
+      : String(outcome.error);
+    reportFailure(entry.path, detail);
+    setEntry((current) => (current === null ? current : { ...current, phase: 'error', detail }));
   };
 
   const label = entry.phase === 'busy'
@@ -367,9 +418,13 @@ function RevealOverlay(props) {
       : 'var(--dsw-alias-label-primary)';
 
   // The chip sizes to its label; the estimated width only decides placement.
+  // A failure adds a second line with the Host's reason, so it gets more room.
+  const showDetail = entry.phase === 'error' && typeof entry.detail === 'string' && entry.detail !== '';
+  const widestLine = showDetail ? Math.max(label.length, Math.min(entry.detail.length, 60)) : label.length;
   const maxWidth = Math.min(POPUP_WIDTH, Math.max(180, window.innerWidth - 16));
-  const chipWidth = Math.min(maxWidth, 96 + label.length * 14);
-  const placed = placeChip(entry.rect, { width: chipWidth, height: 34 }, {
+  const chipWidth = Math.min(maxWidth, 96 + widestLine * 14);
+  const chipHeight = showDetail ? 52 : 34;
+  const placed = placeChip(entry.rect, { width: chipWidth, height: chipHeight }, {
     width: window.innerWidth,
     height: window.innerHeight,
   });
@@ -388,15 +443,17 @@ function RevealOverlay(props) {
     },
   }, React.createElement('button', {
     type: 'button',
-    title: entry.path,
-    'aria-label': `${label}: ${entry.path}`,
+    title: showDetail ? `${entry.path}\n${entry.detail}` : entry.path,
+    'aria-label': showDetail ? `${label}: ${entry.detail}` : `${label}: ${entry.path}`,
+    'data-phase': entry.phase,
     disabled: entry.phase === 'busy',
     onClick: run,
     style: {
       pointerEvents: 'auto',
       display: 'inline-flex',
-      alignItems: 'center',
-      gap: 8,
+      flexDirection: showDetail ? 'column' : 'row',
+      alignItems: showDetail ? 'stretch' : 'center',
+      gap: showDetail ? 2 : 8,
       maxWidth: '100%',
       minHeight: 34,
       padding: '6px 12px',
@@ -409,15 +466,38 @@ function RevealOverlay(props) {
       font: 'var(--dsw-font-xs-strong-13, 500 13px/18px system-ui)',
       textAlign: 'left',
     },
-  }, React.createElement(FolderIcon), React.createElement('span', {
-    style: {
-      flex: '1 1 auto',
-      minWidth: 0,
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap',
-    },
-  }, label)));
+  }, showDetail
+    ? [
+      React.createElement('span', {
+        key: 'label',
+        style: { display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 },
+      }, React.createElement(FolderIcon), React.createElement('span', {
+        style: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+      }, label)),
+      React.createElement('span', {
+        key: 'detail',
+        style: {
+          color: 'var(--dsw-alias-label-secondary)',
+          font: 'var(--dsw-font-xxs-12, 400 12px/16px system-ui)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        },
+      }, entry.detail),
+    ]
+    : [
+      React.createElement(FolderIcon, { key: 'icon' }),
+      React.createElement('span', {
+        key: 'label',
+        style: {
+          flex: '1 1 auto',
+          minWidth: 0,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        },
+      }, label),
+    ]));
 }
 
 /**
@@ -492,13 +572,15 @@ function apply(ctx) {
 module.exports = {
   inject: ['slots', 'locale', 'remote', 'remote.session'],
   apply,
-  // Exported for the test script; the loader only consumes `inject` and `apply`.
+  // Exported for the test suite; the loader only consumes `inject` and `apply`.
   __internals: {
     isAbsolutePath,
     resolveWorkspacePath,
     looksLikePath,
     readPathTarget,
     placeChip,
+    reportFailure,
+    SELECTORS,
     NS,
   },
 };

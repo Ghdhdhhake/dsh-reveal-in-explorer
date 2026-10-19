@@ -1,0 +1,72 @@
+<!doctype html>
+<!--
+  A trimmed capture of the DeepSeek Harness chat markup this plugin depends on.
+
+  Only the structural contract matters here, not the styling: the plugin reads
+  titles and ancestry, never text or classes beyond the `fileLink` substring.
+  Every selector in `src/client/index.js` (SELECTORS) must resolve against this
+  file, so a DSH upgrade that renames a hook fails CI instead of failing
+  silently in the page.
+
+  Shape sources (verified against DSH 0.2.1-rc.2 client bundles):
+    - markdown inline code  → <code><button title="path" class="…fileMention…">
+    - markdown file link    → <button title="path" class="…fileMention …fileLink…">
+    - composer/user chip    → <button data-ref-chip="file" title="path">
+    - delivered file card   → <div data-presented-file><button title="path">
+    - transcript column     → <div data-chat-flow>
+-->
+<html lang="zh-CN">
+  <body>
+    <main>
+      <div class="chatFrame">
+        <div class="scroll">
+          <div class="column" data-chat-flow data-chat-motion>
+            <!-- assistant markdown: resolved inline-code file reference -->
+            <div class="markdown">
+              <p>
+                已生成脚本，入口是
+                <code><button type="button" class="markdown_fileMention" title="B站下载器代码.txt"><span>B站下载器代码.txt</span></button></code>
+                ，改完再跑一次。
+              </p>
+            </div>
+
+            <!-- assistant markdown: path-shaped link -->
+            <div class="markdown">
+              <p>
+                详细说明见
+                <button type="button" class="markdown_fileMention markdown_fileLink" title="docs/usage.md">docs/usage.md</button>
+              </p>
+            </div>
+
+            <!-- assistant markdown: absolute Windows path, with a line number -->
+            <div class="markdown">
+              <p>
+                这里改了一行：
+                <code><button type="button" class="markdown_fileMention" title="C:\work\bili-下载\downloader.py">downloader.py</button></code>
+              </p>
+            </div>
+
+            <!-- decoy: action controls whose tooltips are prose, not paths -->
+            <div class="turnActions">
+              <button type="button" title="Copy">Copy</button>
+              <button type="button" title="Open in sidebar">Open</button>
+              <button type="button" title="Retry">Retry</button>
+            </div>
+
+            <!-- delivered file card -->
+            <div class="deliverables" data-presented-file>
+              <button type="button" title="C:\work\bili-下载\README.md">README.md</button>
+              <button type="button" title="Open in sidebar">Open</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- composer: the @ file chip the user typed -->
+        <div class="composer">
+          <button type="button" data-ref-chip="file" title="docs/spec.pdf">spec.pdf</button>
+          <button type="button" data-ref-chip="skill" title="some-skill">some-skill</button>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
