@@ -1,0 +1,104 @@
+{
+  "name": "dsh-reveal-in-explorer",
+  "version": "0.1.0",
+  "description": "Hover a file reference in DeepSeek Harness chat to reveal it in the system file manager. 悬停聊天里的文件引用，一键在资源管理器中定位。",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "lib",
+    "src",
+    "scripts",
+    "docs",
+    "cordis.patch.yml",
+    "dsh.plugin.json",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "README.en.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-connection"
+      ]
+    },
+    "manifestVersion": 1
+  },
+  "engines": {
+    "dsh": ">=0.2.0-rc.1 <0.3.0",
+    "node": ">=20"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.4",
+    "@deepseek-ai/dsh-api-remotes": "^0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-connection": "^0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-locale": "^0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.2.0-rc.1",
+    "react": "^18.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-api-remotes": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-connection": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-locale": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-ui-slots": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "keywords": [
+    "deepseek",
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "client-plugin",
+    "file",
+    "explorer",
+    "finder",
+    "reveal",
+    "i18n"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ghdhdhhake/dsh-reveal-in-explorer.git"
+  },
+  "homepage": "https://github.com/Ghdhdhhake/dsh-reveal-in-explorer#readme",
+  "bugs": {
+    "url": "https://github.com/Ghdhdhhake/dsh-reveal-in-explorer/issues"
+  },
+  "license": "MIT",
+  "scripts": {
+    "check": "node scripts/check.mjs",
+    "test": "node scripts/test.mjs"
+  }
+}

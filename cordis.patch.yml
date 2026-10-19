@@ -1,0 +1,3 @@
+- insert:
+    - id: reveal-in-explorer
+      name: 'dsh-reveal-in-explorer'

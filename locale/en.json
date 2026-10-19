@@ -1,0 +1,12 @@
+{
+  "meta": {
+    "title": "Reveal in File Explorer",
+    "description": "Hover a blue file reference in chat to pop up a button that reveals the file in the system file manager."
+  },
+  "reveal": {
+    "action": "Reveal in File Explorer",
+    "busy": "Opening…",
+    "done": "Revealed in File Explorer",
+    "error": "Could not open the file manager"
+  }
+}

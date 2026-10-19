@@ -1,0 +1,12 @@
+{
+  "name": "dsh-reveal-in-explorer",
+  "description": "Hover a file reference in DeepSeek Harness chat to reveal it in the system file manager",
+  "version": "0.1.0",
+  "entry": {
+    "name": "dsh-reveal-in-explorer",
+    "inject": []
+  },
+  "client": {
+    "platform": "web"
+  }
+}
