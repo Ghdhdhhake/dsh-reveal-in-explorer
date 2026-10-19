@@ -111,7 +111,7 @@ expect(clientBundle.includes('window.__ModuleLoader__.load({'), 'lib/client.js: 
 expect(clientBundle.includes('factory(require)'), 'lib/client.js: factory must accept require');
 
 const hostEntry = readFileSync(join(root, 'lib/index.js'), 'utf8');
-expect(/export\s+function\s+apply\s*\(/.test(hostEntry), 'lib/index.js: must export apply()');
+expect(/export\s+function\s+apply\s*\(\s*ctx\b/.test(hostEntry), 'lib/index.js: must export apply(ctx)');
 
 // The selector contract is the one place a DSH upgrade can break this plugin
 // silently, so the fixture and the selector table must both be present.

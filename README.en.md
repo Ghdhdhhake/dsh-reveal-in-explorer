@@ -40,16 +40,22 @@ The fallback only accepts tooltips that look like paths (a separator, or a bare 
 ## Install
 
 ```sh
-dsh plugin --profile <profile> add github:Ghdhdhhake/dsh-reveal-in-explorer
+dsh plugin --profile web add dsh-reveal-in-explorer
+```
+
+Before the package is published to NPM, install straight from this repository:
+
+```sh
+dsh plugin --profile web add github:Ghdhdhhake/dsh-reveal-in-explorer
 ```
 
 Or from a local directory:
 
 ```sh
-dsh plugin --profile <profile> add /path/to/dsh-reveal-in-explorer
+dsh plugin --profile web add /path/to/dsh-reveal-in-explorer
 ```
 
-Refresh the page afterwards; Client changes hot-reload, no restart needed.
+Swap `web` for your own profile name (for example `desktop`). Refresh the page afterwards; Client changes hot-reload, no restart needed.
 
 ### Manual mount (offline)
 

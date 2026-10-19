@@ -40,16 +40,22 @@
 ## 安装
 
 ```sh
-dsh plugin --profile <profile> add github:Ghdhdhhake/dsh-reveal-in-explorer
+dsh plugin --profile web add dsh-reveal-in-explorer
+```
+
+尚未发布到 NPM 时，直接从本仓库源码安装：
+
+```sh
+dsh plugin --profile web add github:Ghdhdhhake/dsh-reveal-in-explorer
 ```
 
 或从本地目录安装：
 
 ```sh
-dsh plugin --profile <profile> add /path/to/dsh-reveal-in-explorer
+dsh plugin --profile web add /path/to/dsh-reveal-in-explorer
 ```
 
-安装后刷新页面即可；Client 改动热加载，无需重启。
+把 `web` 换成你自己的 profile 名即可（如 `desktop`）。安装后刷新页面即可；Client 改动热加载，无需重启。
 
 ### 手动挂载（离线环境）
 
